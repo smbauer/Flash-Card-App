@@ -8,30 +8,45 @@ STARTING_WORD = "Word"
 FLIP_TIME = 5000
 
 # import translations to dataframe
-df = pd.read_csv("data/spanish_words.csv").to_dict(orient="records")
+try:
+    df = pd.read_csv("data/words_to_learn.csv").to_dict(orient="records")
+except FileNotFoundError:    
+    df = pd.read_csv("data/spanish_words.csv").to_dict(orient="records")
 
 
 def choose_word():
-    global english_word
-
+    '''Choose a new Spanish word and start the timer'''
+    global record
     record = random.choice(df)
-    spanish_word = record["Spanish"]
-    english_word = record["English"]
 
+    window.after_cancel(flip_timer)
     canvas.itemconfig(canvas_image, image=card_front_img)
     canvas.itemconfig(language_text, text="Spanish", fill="black")
-    canvas.itemconfig(word_text, text=spanish_word, fill="black")
+    canvas.itemconfig(word_text, text=record["Spanish"], fill="black")
     count_down()
 
 
 def flip_card():
+    '''Flip the card to show the English side'''
     canvas.itemconfig(canvas_image, image=card_back_img)
     canvas.itemconfig(language_text, text="English", fill="white")
-    canvas.itemconfig(word_text, text=english_word, fill="white")
+    canvas.itemconfig(word_text, text=record["English"], fill="white")
 
 
 def count_down():
-    window.after(FLIP_TIME, flip_card)
+    '''Set a timer for flipping over the cards'''
+    global flip_timer
+    flip_timer = window.after(FLIP_TIME, func=flip_card)
+
+
+def word_known():
+    '''
+    If the user knows the word, remove it from the list of words to choose from
+    and save the list for future use, then choose a new word
+    '''
+    df.remove(record)
+    pd.DataFrame(df).to_csv("data/words_to_learn.csv", index=False)
+    choose_word()
 
 
 # set up UI
@@ -55,9 +70,11 @@ wrong_button = Button(image=x_image, highlightthickness=0, borderwidth=0, relief
 wrong_button.grid(column=0, row=1)
 
 check_image = PhotoImage(file="images/right.png")
-right_button = Button(image=check_image, highlightthickness=0, borderwidth=0, relief="flat", command=choose_word)
+right_button = Button(image=check_image, highlightthickness=0, borderwidth=0, relief="flat", command=word_known)
 right_button.grid(column=1, row=1)
 
+# start the game
+count_down()
 choose_word()
 
 window.mainloop()
